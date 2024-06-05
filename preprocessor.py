@@ -105,7 +105,8 @@ def convert_log_to_pcap(input_file: Path, output_file: Path, file_extension: str
 def optimize_pcap(input_file: Path, output_file: Path):
     tshark_path = get_tshark_path()
     filters = 'lte-rrc.RAT_Type or lte-rrc.rat_Type or nr-rrc.rat_Type or gsmtap_log.string matches ".*UE CA Combos.*"'
-    subprocess.check_call([tshark_path, '-Y', filters, '-r', input_file, '-w', output_file, '-F', 'pcap'])
+    lua_script = 'lua_script:wireshark_plugin/scat.lua'
+    subprocess.check_call([tshark_path, '-X', lua_script, '-Y', filters, '-r', input_file, '-w', output_file, '-F', 'pcap'])
 
 
 def main():
