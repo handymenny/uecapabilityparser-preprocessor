@@ -28,7 +28,7 @@ Instead of steps 3-5, you can drag & drop the input file onto preprocessor.bat (
 ## Supported formats
 | Type  | Formats |
 | ------------- | ------------- |
-| Baseband log  | DLF, QMDL, QMDL2, HDF, SDM  |
+| Baseband log  | DLF, HDF, QMDL/QDML2 DIAG, SDM, NSG JSON |
 | Packet capture  | PCAP, PCAPNG  |
 
 ## Dependencies
