@@ -1,3 +1,4 @@
+import binascii
 import os
 import platform
 import random
@@ -7,6 +8,13 @@ import subprocess
 import sys
 import sysconfig
 from pathlib import Path
+import importlib.util
+import json
+
+
+def check_dep_installed(name: str) -> bool:
+    spec = importlib.util.find_spec(name)
+    return spec is not None
 
 
 def print_stderr(message: str):
@@ -99,13 +107,20 @@ def check_prerequisites():
         print_stderr("tshark not found. please install wireshark/tshark")
         sys.exit(1)
 
+    if not check_dep_installed("json_stream"):
+        print(
+            "Warning: json_stream isn't installed, it can speedup NSG log parsing. You can install it by running 'pip install json_stream'"
+        )
+
 
 def get_random_string(length: int):
     letters = string.ascii_lowercase
     return "".join(random.choice(letters) for _ in range(length))
 
 
-def convert_log_to_pcap(input_file: Path, output_file: Path, file_extension: str):
+def convert_log_to_pcap_with_scat(
+    input_file: Path, output_file: Path, file_extension: str
+):
     sdm = file_extension in [".sdm", ".sdmraw"]
     if sdm:
         arguments = ["-t", "sec"]
@@ -115,6 +130,34 @@ def convert_log_to_pcap(input_file: Path, output_file: Path, file_extension: str
         ["scat", *arguments, "-d", input_file, "-F", output_file],
         stdout=subprocess.DEVNULL,
     )
+
+
+def convert_nsg_json_to_pcap(input_file: Path, output_file: Path):
+    data = None
+    with open(input_file, "r") as f:
+        if check_dep_installed("json_stream"):
+            import json_stream
+
+            data = json_stream.load(f)
+        else:
+            data = json.load(f)
+
+        if data is None:
+            print("error: failed to read json file")
+
+        with open(output_file, "wb") as pcap:
+            header = data.get("PCAPHeader")
+            if not header:
+                print(
+                    "error: failed to read PCAPHeader from json file. Likely not a valid NSG json file"
+                )
+            pcap.write(binascii.unhexlify(header))
+
+            for item in data.get("data", []):
+                for message in item.get("messages", []):
+                    packet = message.get("PCAPPacket")
+                    if packet:
+                        pcap.write(binascii.unhexlify(packet))
 
 
 def optimize_pcap(input_file: Path, output_file: Path):
@@ -166,6 +209,7 @@ def main():
         ".dlf",
         ".sdm",
         ".sdmraw",
+        ".json",
     ]
 
     if file_extension not in supported_extensions:
@@ -178,10 +222,21 @@ def main():
     path_without_extension = input_file_stripped.removesuffix(file_extension)
     rnd = "-" + get_random_string(4)
 
-    if file_extension in [".hdf", ".qmdl", ".qmdl2", ".dlf", ".sdm", ".sdmraw"]:
+    if file_extension in [
+        ".hdf",
+        ".qmdl",
+        ".qmdl2",
+        ".dlf",
+        ".sdm",
+        ".sdmraw",
+        ".json",
+    ]:
         output_pcap = Path(f"{path_without_extension}{rnd}.pcap")
         print(f"converting {file_extension[1:]} to pcap...")
-        convert_log_to_pcap(input_file_path, output_pcap, file_extension)
+        if file_extension in [".json"]:
+            convert_nsg_json_to_pcap(input_file_path, output_pcap)
+        else:
+            convert_log_to_pcap_with_scat(input_file_path, output_pcap, file_extension)
         print(f"pcap saved to {output_pcap}")
     else:
         output_pcap = input_file_path
