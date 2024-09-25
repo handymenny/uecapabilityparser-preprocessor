@@ -10,7 +10,7 @@ The pre processing consists of two steps:
     a. For types `DLF, HDF, QMDL/QDML2 DIAG, SDM` baseband logs are converted to pcap by [scat](https://github.com/fgsect/scat).<br>
     b. For type `NSG JSON` the pcap header and the pcap packets are extracted from the json.<br>
     c. For types `PCAP, PCAPNG` nothing is done in this step.
-2. The messages relevant for uecapabilityparser are extracted from the pcap (step 1 result or input). These messages are stored in an optimized pcap. This step uses tshark (part of Wireshark).
+2. The messages relevant for uecapabilityparser are extracted from the pcap (step 1). These messages are stored in an optimized pcap. This step uses tshark (part of Wireshark).
 
 ## Usage
 1. Download the last archive from [release page](https://github.com/HandyMenny/uecapabilityparser-preprocessor/releases)
